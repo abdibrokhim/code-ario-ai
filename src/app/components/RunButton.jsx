@@ -1,5 +1,7 @@
 import React from "react";
 import { classnames } from "../utils/general";
+import { faRocket } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 const RunButton = ({ handleCompile, code, processing }) => {
     return (
@@ -11,7 +13,7 @@ const RunButton = ({ handleCompile, code, processing }) => {
             !code ? "opacity-50" : ""
             )}
         >
-            {processing ? "Running..." : "Run"}
+            {processing ? "Running... " : "Run "} <FontAwesomeIcon icon={faRocket} />
       </button>
     )
 }

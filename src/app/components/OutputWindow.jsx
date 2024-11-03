@@ -1,4 +1,6 @@
 import React from "react";
+import { faTerminal } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 const OutputWindow = ({ outputDetails }) => {
   const getOutput = () => {
@@ -37,7 +39,7 @@ const OutputWindow = ({ outputDetails }) => {
     <>
       <div className="flex items-center justify-between border-b">
         <div className="font-normal px-4 py-2 text-md bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700">
-          Execution Log
+          Execution Log {<FontAwesomeIcon icon={faTerminal} />}
         </div>
         {/* <button className="text-md">Close</button> */}
       </div>
