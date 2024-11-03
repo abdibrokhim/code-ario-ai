@@ -34,7 +34,7 @@ import RecordButton from "./RecordButton";
 
 import { saveAndPlayAudio, openVoiceDatabase } from '../api/text-to-speech/utils/indexdb.js';
 
-import { faClosedCaptioning, faRotateRight, faTerminal } from '@fortawesome/free-solid-svg-icons';
+import { faClosedCaptioning, faMicrophone, faRotateRight, faTerminal } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import loader from '../lib/loader';
 import myImage from '../assets/me.jpeg';
@@ -62,41 +62,11 @@ export default function Landing() {
   const { isLoaded, isSignedIn, user } = useUser();
   const [playInitialPrompt, setPlayInitialPrompt] = useState(false);
   const [isShowingChatLogs, setIsShowingChatLogs] = useState(false);
-  const [chatLogs, setChatLogs] = useState([
-    {
+  const [chatLogs, setChatLogs] = useState([{
     role: 'assistant',
-    message: 'Welcome! I am your assistant. How can I help you today?',
-  },
-  {
-    'role': 'user',
-    'message': 'I need help with a problem statement.',
-  },
-    {
-    role: 'assistant',
-    message: 'Welcome! I am your assistant. How can I help you today?',
-  },
-  {
-    'role': 'user',
-    'message': 'I need help with a problem statement.',
-  },
-    {
-    role: 'assistant',
-    message: 'Welcome! I am your assistant. How can I help you today?',
-  },
-  {
-    'role': 'user',
-    'message': 'I need help with a problem statement.',
-  },
-    {
-    role: 'assistant',
-    message: 'Welcome! I am your assistant. How can I help you today?',
-  },
-  {
-    'role': 'user',
-    'message': 'I need help with a problem statement.',
-  },
-
-]); // example: [{role: 'user', message: 'Hello'}, {role: 'assistant', message: 'Hi!'}]
+    message: 'Welcome to Code Editor!',
+  }]); // example: [{role: 'user', message: 'Hello'}, {role: 'assistant', message: 'Hi!'}]
+  const [messagesLogs, setMessagesLogs] = useState([{}]);
 
   const [interviewerState, setInterviewerState] = useState({
     isThinking: false,
@@ -118,7 +88,6 @@ export default function Landing() {
       return 'Idle...';
     }
   };
-
 
   const enterPress = useKeyPress("Enter");
   const ctrlPress = useKeyPress("Control");
@@ -356,7 +325,7 @@ export default function Landing() {
 
   // ----------------------------
   // some testing stuff
-  const systemPrompt = "You are a helpful assistant that provides useful information to people in need. Your answer should be concise and informative.";
+  const systemPrompt = "You are a helpful coding mentor. You guide users to understand and solve their coding problems by providing hints, explanations, clarifying concepts, and suggesting approaches. Never provide complete solutions or write code for the user. Your goal is to empower them to find the answers themselves. Focus on breaking down problems into smaller, manageable steps and offering resources for further learning. If a user provides code, help them debug and understand it, but do not correct the code for them. If they ask for a specific function or code snippet, explain the underlying logic and principles, but do not write the code itself. Encourage experimentation and independent problem-solving.";
   const dummyQuery = "What is the capital of France?";
 
   const prepareInitialPromptForSpeech = async () => {
@@ -369,15 +338,32 @@ export default function Landing() {
     [example actual Problem Statement]\n${currentProblemContent}\n\n[example Paraphrased Problem Statement]\nWrite a function to calculate the sum of numbers in an array while ignoring sections starting with a 7 and ending with the next 8.
     `;
 
-    const paraphrasedProblemStatement = await generateReply(currentProblemContent, tempInstr);
+    const messages = [
+      {
+          role: "system",
+          content: tempInstr
+      },
+      {
+          role: "user",
+          content: currentProblemContent
+      },
+    ];
+
+    const paraphrasedProblemStatement = await generateReply(messages);
     console.log('Paraphrased Problem Statement:', paraphrasedProblemStatement);
 
-    const initialPromptSpeech = `Welcome, ${currentUser}! I'm Wei Bing Tan, and I'm currently a Senior Software Engineer at Snapchat. Today, we'll be working on the ${currentProblem} problem, where ${paraphrasedProblemStatement}. Please take a minute to read the problem and respond when you're ready to work on it.`;
+    const initialPromptSpeech = `Welcome, ${currentUser}! I'm Wei B Tan, and I'm currently a Senior Software Engineer at Snapchat. Today, we'll be working on the ${currentProblem} problem, where ${paraphrasedProblemStatement}. Please take a minute to read the problem and respond when you're ready to work on it.`;
     console.log('Initial Prompt Speech:', initialPromptSpeech);
     
     // update chat logs
     setChatLogs([
       ...chatLogs,
+      { role: 'assistant', message: initialPromptSpeech },
+    ]);
+
+    // udpate messages logs
+    setMessagesLogs([
+      ...messagesLogs,
       { role: 'assistant', message: initialPromptSpeech },
     ]);
 
@@ -387,8 +373,7 @@ export default function Landing() {
 
   const [userInteracted, setUserInteracted] = useState(false);
 
-  // turn on in production only
-
+  // turn on in production only (kiddin')
   // useEffect(() => {
   //   const handleUserInteraction = () => {
   //     setUserInteracted(true);
@@ -417,6 +402,31 @@ export default function Landing() {
     const currentUser = user?.fullName || 'Dear';
   };
 
+  const prepareChatMessages = () => {
+    const currentUser = user?.fullName || 'Dear';
+    const currentProblem = selectedProblem?.label || 'problem';
+    const currentProblemContent = selectedProblem?.value || 'problem content';
+    const tempInstr = `
+    ${systemPrompt}\n
+    You are talking to ${currentUser}.\n
+    Problem: ${currentProblem}\n
+    Here is Problem Statement: ${currentProblemContent}\n
+    Below given Conversation between you and ${currentUser}.\n
+    If user asked any question please, answer the question.\n
+    Provide feedback to their code.\n
+    `;
+    const messages = [
+      {
+          role: "system",
+          content: tempInstr
+      },
+
+      ...messagesLogs
+    ];
+
+    return messages;
+  };
+
   // State variables for speech recognition
   const [isRecording, setIsRecording] = useState(false);
   const [recordingComplete, setRecordingComplete] = useState(false);
@@ -426,9 +436,16 @@ export default function Landing() {
   const recognitionRef = useRef<any>(null);
   // Start Recording
   const startRecording = () => {
+    console.log('Starting recording...');
     setIsRecording(true);
     setRecordingComplete(false);
     setTranscript('');
+    // update state
+    setInterviewerState({
+      isThinking: false,
+      isSpeaking: false,
+      isListening: true,
+    });
 
     recognitionRef.current = new window.webkitSpeechRecognition();
     recognitionRef.current.continuous = true;
@@ -483,8 +500,27 @@ export default function Landing() {
   // Stop Recording
   const stopRecording = () => {
     if (recognitionRef.current) {
+      console.log("Stopping recording")
+      setIsRecording(false);
+      // Save to IndexedDB and play
+        setInterviewerState({
+          isThinking: true,
+          isSpeaking: false,
+          isListening: false,
+        });
       recognitionRef.current.stop();
-      handleAIResponse(transcript);
+      // save transcript to chat logs
+      setChatLogs([
+        ...chatLogs,
+        { role: 'user', message: transcript },
+      ]);
+      const msg = `[Code]\n${code}\n\n [User Query & Response]\n${transcript}`;
+      // udpate messages logs
+      setMessagesLogs([
+        ...messagesLogs,
+        { role: 'user', message: msg },
+      ]);
+      handleAIResponse(msg);
     }
   };
 
@@ -495,6 +531,11 @@ export default function Landing() {
     } else {
       stopRecording();
     }
+  };
+
+  const handleRecordButton = () => {
+    console.log("handleRecordButton...");
+    handleToggleRecording();
   };
 
   // Cleanup effect
@@ -511,20 +552,24 @@ export default function Landing() {
   // Update handleAIResponse function
   const handleAIResponse = async (userQuery:string) => {
     console.log('Handling AI response...');
-    showInfoToast('Processing your request...');
+    showInfoToast('Processing...');
     try {
       setIsProcessing(true);
       // Show some loading state if needed
-      console.log('Sending user query to AI:', userQuery);
+      console.log('Current user query:', userQuery);
+      console.log('Current chat logs: ', chatLogs);
+      console.log('Current message logs: ', messagesLogs);
+
+      const chatMessages = prepareChatMessages();
+      console.log('Prepared chat messages:', chatMessages);
 
       // Send the transcribed text to the GPT-4o model
-      const aiReply = await generateReply(userQuery, systemPrompt);
-      // const aiReply = await generateReplyPaper(userQuery);
+      // const aiReply = await generateReply(chatMessages);
 
-      console.log('AI Reply:', aiReply);
+      // console.log('AI Reply:', aiReply);
 
       // Convert the AI reply to speech and play it
-      await textToSpeech(aiReply);
+      // await textToSpeech(aiReply);
     } catch (error) {
       console.error('Error handling AI response:', error);
       showErrorToast('An error occurred while processing your request.', 2000);
@@ -536,7 +581,7 @@ export default function Landing() {
   // send request to gpt-4o
   // generate reply for user query
   // Existing generateReply function
-  const generateReply = async (prompt:string, systemPrompt:string) => {
+  const generateReply = async (messages:any) => {
     console.log('Generating reply...');
     try {
       // query-model
@@ -545,7 +590,7 @@ export default function Landing() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ prompt, systemPrompt }),
+        body: JSON.stringify({ messages }),
       });
 
       if (!response.ok) {
@@ -637,14 +682,19 @@ export default function Landing() {
           </button>
         </div>
         <div className="px-4 py-2">
-          <RecordButton handleRecord={()=>{generateReply(dummyQuery, systemPrompt)}} processing={isRecording}/>
+          <button
+              onClick={()=>{handleRecordButton()}}
+              className={classnames("border-2 border-black z-10 rounded-md shadow-[5px_5px_0px_0px_rgba(0,0,0)] px-4 py-2 hover:shadow transition duration-200 bg-white flex-shrink-0",)}
+          >
+              {isRecording ? "Stop " : "Record " } {isRecording ? loader() : <FontAwesomeIcon icon={faMicrophone} />}
+          </button>
         </div>
         <div className="px-4 py-2">
           <button
               onClick={()=>{setIsShowingChatLogs(!isShowingChatLogs)}}
               className={classnames("border-2 border-black z-10 rounded-md shadow-[5px_5px_0px_0px_rgba(0,0,0)] px-4 py-2 hover:shadow transition duration-200 bg-white flex-shrink-0",)}
           >
-              {processing ? "Show chat " : "Show chat "} <FontAwesomeIcon icon={faClosedCaptioning} />
+              {isShowingChatLogs ? "Hide chat " : "Show chat "} <FontAwesomeIcon icon={faClosedCaptioning} />
           </button>
         </div>
       </div>

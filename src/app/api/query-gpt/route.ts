@@ -4,7 +4,7 @@ const apiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY;
 
 export async function POST(request: Request) {
     try {
-        const { prompt, systemPrompt } = await request.json();
+        const { messages } = await request.json();
 
         // Make the API call to the external service
         const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -15,16 +15,7 @@ export async function POST(request: Request) {
             },
             body: JSON.stringify({
                 model: "gpt-4o",
-                messages: [
-                    {
-                        role: "system",
-                        content: systemPrompt
-                    },
-                    {
-                        role: "user",
-                        content: `${prompt}`
-                    },
-                ],
+                messages: messages,
                 max_tokens: 512,
             }),
         });
