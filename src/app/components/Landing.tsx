@@ -34,13 +34,15 @@ import RecordButton from "./RecordButton";
 
 import { saveAndPlayAudio, openVoiceDatabase } from '../api/text-to-speech/utils/indexdb.js';
 
-import { faTerminal } from '@fortawesome/free-solid-svg-icons';
+import { faClosedCaptioning, faRotateRight, faTerminal } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import loader from '../lib/loader';
 import myImage from '../assets/me.jpeg';
+import weiImage from '../assets/wei.jpeg';
 import myGif from '../assets/circle.gif';
 import './styles.css';
 import { useUser } from '@clerk/nextjs';
+import { classnames } from "../utils/general";
 
 const pythonDefault = `print("Hello World")`;
 
@@ -59,12 +61,50 @@ export default function Landing() {
   const [isProcessing, setIsProcessing] = useState(false);
   const { isLoaded, isSignedIn, user } = useUser();
   const [playInitialPrompt, setPlayInitialPrompt] = useState(false);
+  const [isShowingChatLogs, setIsShowingChatLogs] = useState(false);
+  const [chatLogs, setChatLogs] = useState([
+    {
+    role: 'assistant',
+    message: 'Welcome! I am your assistant. How can I help you today?',
+  },
+  {
+    'role': 'user',
+    'message': 'I need help with a problem statement.',
+  },
+    {
+    role: 'assistant',
+    message: 'Welcome! I am your assistant. How can I help you today?',
+  },
+  {
+    'role': 'user',
+    'message': 'I need help with a problem statement.',
+  },
+    {
+    role: 'assistant',
+    message: 'Welcome! I am your assistant. How can I help you today?',
+  },
+  {
+    'role': 'user',
+    'message': 'I need help with a problem statement.',
+  },
+    {
+    role: 'assistant',
+    message: 'Welcome! I am your assistant. How can I help you today?',
+  },
+  {
+    'role': 'user',
+    'message': 'I need help with a problem statement.',
+  },
+
+]); // example: [{role: 'user', message: 'Hello'}, {role: 'assistant', message: 'Hi!'}]
 
   const [interviewerState, setInterviewerState] = useState({
     isThinking: false,
     isSpeaking: false,
     isListening: false,
   });
+
+  const interviewerName = "Wei B Tan";
 
   // check interview state and return string
   const getInterviewState = () => {
@@ -334,6 +374,12 @@ export default function Landing() {
 
     const initialPromptSpeech = `Welcome, ${currentUser}! I'm Wei Bing Tan, and I'm currently a Senior Software Engineer at Snapchat. Today, we'll be working on the ${currentProblem} problem, where ${paraphrasedProblemStatement}. Please take a minute to read the problem and respond when you're ready to work on it.`;
     console.log('Initial Prompt Speech:', initialPromptSpeech);
+    
+    // update chat logs
+    setChatLogs([
+      ...chatLogs,
+      { role: 'assistant', message: initialPromptSpeech },
+    ]);
 
     // Convert the initial prompt to speech and play it
     await textToSpeech(initialPromptSpeech);
@@ -587,47 +633,71 @@ export default function Landing() {
         </div>
         <div className="px-4 py-2">
           <button className="border-2 border-black z-10 rounded-md shadow-[5px_5px_0px_0px_rgba(0,0,0)] px-4 py-2 hover:shadow transition duration-200 bg-white flex-shrink-0" onClick={toggleExecutionLog}>
-            Execution Log {<FontAwesomeIcon icon={faTerminal} />}
+            Execution log {<FontAwesomeIcon icon={faTerminal} />}
           </button>
         </div>
         <div className="px-4 py-2">
           <RecordButton handleRecord={()=>{generateReply(dummyQuery, systemPrompt)}} processing={isRecording}/>
         </div>
+        <div className="px-4 py-2">
+          <button
+              onClick={()=>{setIsShowingChatLogs(!isShowingChatLogs)}}
+              className={classnames("border-2 border-black z-10 rounded-md shadow-[5px_5px_0px_0px_rgba(0,0,0)] px-4 py-2 hover:shadow transition duration-200 bg-white flex-shrink-0",)}
+          >
+              {processing ? "Show chat " : "Show chat "} <FontAwesomeIcon icon={faClosedCaptioning} />
+          </button>
+        </div>
       </div>
+      {isShowingChatLogs && (
+        <div className="fixed top-16 right-10 w-[400px] h-[400px] bg-white border border-gray-300 rounded-lg shadow-lg overflow-hidden z-50">
+          <div className="p-4 bg-gray-800 text-white text-center font-bold">Chat</div>
+          <div className="p-4 h-[calc(100%-60px)] overflow-y-auto space-y-3 bg-gray-100">
+            {chatLogs.map((log, index) => (
+              <div
+                key={index}
+                className={`p-3 rounded-lg ${
+                  log.role === "user" ? "bg-gray-200 text-right" : "bg-gray-300 text-left"
+                }`}
+              >
+                <p className="text-sm">{log.message}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="flex flex-col h-full">
         <div className="flex flex-col lg:flex-row space-y-4 lg:space-y-0 lg:space-x-4 items-start px-4 py-4">
-          <div className="flex flex-row w-full h-full justify-start items-center">
+          <div className="flex flex-row w-full h-full justify-start items-end">
             <CodeEditorWindow
               code={code}
               onChange={onChange}
               language={language?.value}
               theme={theme.valueOf()}
             />
-{/* interviewer window */}
-<div className="flex flex-col items-center justify-center text-center w-[20%]">
-  <div className="flex flex-col text-center items-center justify-center gap-2 noselect">
-    {/* Circular GIF background with image on top */}
-    <div className="relative w-32 h-32 rounded-full overflow-hidden shadow-lg">
-      {/* GIF background */}
-      <div className="absolute inset-0 w-[142%] h-[142%] mt-[-25px] ml-[-25px] bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: `url(/circle.gif)` }}>
-      </div>
-      {/* Image layered on top */}
-      <Image
-        priority={true}
-        src={myImage}
-        width={80}
-        height={80}
-        alt="Interviewer"
-        className="relative w-24 h-24 rounded-full shadow-md nodrag top-4 left-4"
-        title="Interviewer"
-      />
-    </div>
-    <p className="text-lg font-bold">Ibrohim Abdivokhidov</p>
-    <p>{getInterviewState()}</p>
-  </div>
-</div>
-
+            {/* interviewer window */}
+            <div className="flex flex-col items-center justify-center text-center w-[20%] mb-[50px]">
+              <div className="flex flex-col text-center items-center justify-center gap-2 noselect">
+                {/* Circular GIF background with image on top */}
+                <div className="relative w-32 h-32 rounded-full overflow-hidden shadow-lg">
+                  {/* GIF background */}
+                  <div className="absolute inset-0 w-[142%] h-[142%] mt-[-26px] ml-[-25px] bg-cover bg-center bg-no-repeat"
+                    style={{ backgroundImage: `url(/circle.gif)` }}>
+                  </div>
+                  {/* Image layered on top */}
+                  <Image
+                    priority={true}
+                    src={weiImage}
+                    width={80}
+                    height={80}
+                    alt="Interviewer"
+                    className="relative w-24 h-24 rounded-full shadow-md nodrag top-4 left-4"
+                    title="Interviewer"
+                  />
+                </div>
+                <p className="text-lg font-bold">{interviewerName}</p>
+                <p>{getInterviewState()}</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
