@@ -62,11 +62,13 @@ export default function Landing() {
   const { isLoaded, isSignedIn, user } = useUser();
   const [playInitialPrompt, setPlayInitialPrompt] = useState(false);
   const [isShowingChatLogs, setIsShowingChatLogs] = useState(false);
-  const [chatLogs, setChatLogs] = useState([{
-    role: 'assistant',
-    message: 'Welcome to Code Editor!',
-  }]); // example: [{role: 'user', message: 'Hello'}, {role: 'assistant', message: 'Hi!'}]
-  const [messagesLogs, setMessagesLogs] = useState([{}]);
+  interface MessageLog {
+    role: string;
+    content: string;
+  }
+  const [chatLogs, setChatLogs] = useState<MessageLog[]>([]);
+  
+  const [messagesLogs, setMessagesLogs] = useState<MessageLog[]>([]);
 
   const [interviewerState, setInterviewerState] = useState({
     isThinking: false,
@@ -356,36 +358,38 @@ export default function Landing() {
     console.log('Initial Prompt Speech:', initialPromptSpeech);
     
     // update chat logs
-    setChatLogs([
-      ...chatLogs,
-      { role: 'assistant', message: initialPromptSpeech },
-    ]);
+    addChatLogs({ role: 'assistant', content: initialPromptSpeech });
 
     // udpate messages logs
-    setMessagesLogs([
-      ...messagesLogs,
-      { role: 'assistant', message: initialPromptSpeech },
-    ]);
+    addMessageLogs({ role: 'assistant', content: initialPromptSpeech });
 
     // Convert the initial prompt to speech and play it
     await textToSpeech(initialPromptSpeech);
   };
 
+  // Function to add new log and trigger update
+  const addMessageLogs = (newMessage:any) => {
+    setMessagesLogs((prevLogs) => [...prevLogs, newMessage]);
+  };
+  const addChatLogs = (newMessage:any) => {
+    setChatLogs((prevLogs) => [...prevLogs, newMessage]);
+  };
+
   const [userInteracted, setUserInteracted] = useState(false);
 
   // turn on in production only (kiddin')
-  // useEffect(() => {
-  //   const handleUserInteraction = () => {
-  //     setUserInteracted(true);
-  //     window.removeEventListener('click', handleUserInteraction);
-  //   };
-
-  //   window.addEventListener('click', handleUserInteraction);
-
-  //   return () => {
-  //     window.removeEventListener('click', handleUserInteraction);
-  //   };
-  // }, []);
+  useEffect(() => {
+    const handleUserInteraction = () => {
+      setUserInteracted(true);
+      window.removeEventListener('click', handleUserInteraction);
+    };
+  
+    window.addEventListener('click', handleUserInteraction);
+  
+    return () => {
+      window.removeEventListener('click', handleUserInteraction);
+    };
+  }, []);
 
   useEffect(() => {
     if (userInteracted) {
@@ -402,7 +406,7 @@ export default function Landing() {
     const currentUser = user?.fullName || 'Dear';
   };
 
-  const prepareChatMessages = () => {
+  const prepareChatMessages = (userMessage:string) => {
     const currentUser = user?.fullName || 'Dear';
     const currentProblem = selectedProblem?.label || 'problem';
     const currentProblemContent = selectedProblem?.value || 'problem content';
@@ -415,13 +419,16 @@ export default function Landing() {
     If user asked any question please, answer the question.\n
     Provide feedback to their code.\n
     `;
+    const newMessageLog = { role: 'user', content: userMessage };
+    const updatedMessagesLogs = [...messagesLogs, newMessageLog];
+
     const messages = [
       {
           role: "system",
           content: tempInstr
       },
 
-      ...messagesLogs
+      ...updatedMessagesLogs,
     ];
 
     return messages;
@@ -430,16 +437,16 @@ export default function Landing() {
   // State variables for speech recognition
   const [isRecording, setIsRecording] = useState(false);
   const [recordingComplete, setRecordingComplete] = useState(false);
-  const [transcript, setTranscript] = useState('');
+  const [ctranscript, setcTranscript] = useState('');
 
   // Reference to store the SpeechRecognition instance
   const recognitionRef = useRef<any>(null);
   // Start Recording
-  const startRecording = () => {
+  const startRecording = async () => {
     console.log('Starting recording...');
     setIsRecording(true);
     setRecordingComplete(false);
-    setTranscript('');
+    setcTranscript('');
     // update state
     setInterviewerState({
       isThinking: false,
@@ -452,10 +459,24 @@ export default function Landing() {
     recognitionRef.current.interimResults = false;
     recognitionRef.current.lang = 'en-US';
 
+    // Updated onresult handler
     recognitionRef.current.onresult = (event:any) => {
-      const { transcript } = event.results[event.results.length - 1][0];
-      console.log('Speech recognition result:', event.results);
-      setTranscript(transcript);
+      let finalTranscript = '';
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
+        }
+      }
+      console.log('Final transcript: ', finalTranscript);
+      if (finalTranscript.length > 0) {
+        setcTranscript(finalTranscript);
+        addChatLogs({ role: 'user', content: finalTranscript });
+        const msg = `[Code]\n${code}\n\n [User Query & Response]\n${finalTranscript}`;
+        addMessageLogs({ role: 'user', content: msg });
+        handleAIResponse(msg);
+      } else {
+        alert('No speech detected. Please try again.');
+      }
     };
 
     recognitionRef.current.onerror = (event:any) => {
@@ -464,78 +485,46 @@ export default function Landing() {
       setIsRecording(false);
     };
 
-    // recognitionRef.current.onend = () => {
-    //   setIsRecording(false);
-    //   setRecordingComplete(true);
-    //   console.log('Recording complete');
-    //   console.log('Transcript:', transcript);
-
-    //   if (transcript.length > 0) {
-    //     handleAIResponse(transcript);
-    //   } else {
-    //     alert('No speech detected. Please try again.');
-    //   }
-    // };
+    recognitionRef.current.onend = () => {
+      console.log('Speech recognition ended');
+      setIsRecording(false);
+      setInterviewerState({
+        isThinking: true,
+        isSpeaking: false,
+        isListening: false,
+      });
+    };
+    
+    recognitionRef.current.onspeechend = () => {
+      recognitionRef.current.stop();
+      recognitionRef.current.continuous = false;
+    };
 
     recognitionRef.current.start();
   };
 
-  // useEffect(() => {
-  //   // check whether transcript has word "done". If yes then stop recording
-  //   if (transcript.toLowerCase().includes('stop')) {
-  //     setIsRecording(false);
-  //     setRecordingComplete(true);
-  //     console.log('Recording complete');
-  //     console.log('Transcript:', transcript);
-
-  //     if (transcript.length > 0) {
-  //       // send without "done" word
-  //       handleAIResponse(transcript.replace('stop', ''));
-  //     } else {
-  //       alert('No speech detected. Please try again.');
-  //     }
-  //   }
-  // }, [transcript]);
-
   // Stop Recording
-  const stopRecording = () => {
+  const stopRecording = async () => {
     if (recognitionRef.current) {
       console.log("Stopping recording")
       setIsRecording(false);
-      // Save to IndexedDB and play
-        setInterviewerState({
-          isThinking: true,
-          isSpeaking: false,
-          isListening: false,
-        });
+      setInterviewerState({
+        isThinking: true,
+        isSpeaking: false,
+        isListening: false,
+      });
       recognitionRef.current.stop();
-      // save transcript to chat logs
-      setChatLogs([
-        ...chatLogs,
-        { role: 'user', message: transcript },
-      ]);
-      const msg = `[Code]\n${code}\n\n [User Query & Response]\n${transcript}`;
-      // udpate messages logs
-      setMessagesLogs([
-        ...messagesLogs,
-        { role: 'user', message: msg },
-      ]);
-      handleAIResponse(msg);
     }
   };
 
   // Toggle Recording
-  const handleToggleRecording = () => {
+  const handleRecordButton = () => {
+    console.log("handleRecordButton...");
     if (!isRecording) {
       startRecording();
     } else {
       stopRecording();
     }
-  };
-
-  const handleRecordButton = () => {
-    console.log("handleRecordButton...");
-    handleToggleRecording();
   };
 
   // Cleanup effect
@@ -560,16 +549,23 @@ export default function Landing() {
       console.log('Current chat logs: ', chatLogs);
       console.log('Current message logs: ', messagesLogs);
 
-      const chatMessages = prepareChatMessages();
+      const chatMessages = prepareChatMessages(userQuery);
       console.log('Prepared chat messages:', chatMessages);
 
       // Send the transcribed text to the GPT-4o model
-      // const aiReply = await generateReply(chatMessages);
+      const aiReply = await generateReply(chatMessages);
 
-      // console.log('AI Reply:', aiReply);
+      console.log('AI Reply:', aiReply);
+
+      // Update chat logs
+      addChatLogs({ role: 'assistant', content: aiReply });
+
+      // Update messages logs
+      addMessageLogs({ role: 'assistant', content: aiReply });
 
       // Convert the AI reply to speech and play it
-      // await textToSpeech(aiReply);
+      await textToSpeech(aiReply);
+      console.log("I should be printed after textToSpeech, um..., shitt.");
     } catch (error) {
       console.error('Error handling AI response:', error);
       showErrorToast('An error occurred while processing your request.', 2000);
@@ -607,7 +603,6 @@ export default function Landing() {
   };
 
   // when we get reply from gpt-4o model then we will convert it to voice and play it
-
   // send request to elevenlabs api
   // text to speech
   // Modify your existing textToSpeech function to accept dynamic text
@@ -639,12 +634,7 @@ export default function Landing() {
       console.error('Error:', error);
       alert('An error occurred while fetching the audio.');
     } finally {
-      startRecording();
-      setInterviewerState({
-        isThinking: false,
-        isSpeaking: false,
-        isListening: true,
-      });
+      // startRecording();
     }
   };
 
@@ -709,7 +699,7 @@ export default function Landing() {
                   log.role === "user" ? "bg-gray-200 text-right" : "bg-gray-300 text-left"
                 }`}
               >
-                <p className="text-sm">{log.message}</p>
+                <p className="text-sm">{log.content}</p>
               </div>
             ))}
           </div>

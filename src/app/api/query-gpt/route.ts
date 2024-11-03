@@ -4,7 +4,9 @@ const apiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY;
 
 export async function POST(request: Request) {
     try {
+        console.log("POST /api/query-gpt");
         const { messages } = await request.json();
+        console.log("input data: ", messages);
 
         // Make the API call to the external service
         const response = await fetch("https://api.openai.com/v1/chat/completions", {

@@ -4,10 +4,12 @@ const apiKey = process.env.NEXT_PUBLIC_ARIA_API_KEY;
 
 export async function POST(request: Request) {
     try {
-        const { prompt, systemPrompt } = await request.json();
+        console.log("POST /api/query-ario");
+        const { messages } = await request.json();
+        console.log("input data: ", messages);
 
         // Make the API call to the external service
-        const response = await fetch("https://api.rhymes.ai/v1", {
+        const response = await fetch("https://api.rhymes.ai/v1/completions", {
             method: "POST",
             headers: {
                 Authorization: `Bearer ${apiKey}`,
@@ -15,26 +17,7 @@ export async function POST(request: Request) {
             },
             body: JSON.stringify({
                 model: "aria",
-                messages: [
-                    {
-                        role: "system",
-                        content: [
-                            {
-                                type: "text",
-                                text: systemPrompt
-                            }
-                        ]
-                    },
-                    {
-                        role: "user",
-                        content: [
-                            {
-                                type: "text",
-                                text: `${prompt}`
-                            }
-                        ]
-                    },
-                ],
+                messages: messages,
                 max_tokens: 512,
                 stop: ["<|im_end|>"],
                 stream: false,

@@ -5,9 +5,9 @@ import { NextResponse } from 'next/server';
 export async function POST(request: Request) {
   try {
     console.log('POST /api/text-to-speech');
-
     // Extract the text from the incoming request body
     const { text } = await request.json();
+    console.log('user input:', text);
 
     if (!text || text.length === 0) {
       return NextResponse.json({ message: 'No text provided' }, { status: 400 });
