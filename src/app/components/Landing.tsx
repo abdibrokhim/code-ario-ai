@@ -67,25 +67,26 @@ export default function Landing() {
     role: string;
     content: string;
   }
-  const [chatLogs, setChatLogs] = useState<MessageLog[]>(
-    [
-      {
-          "role": "assistant",
-          "content": "Welcome, Ibrohim Abdivokhidov! I'm Wei B Tan, and I'm currently a Senior Software Engineer at Snapchat. Today, we'll be working on the Biggest Difference problem, where Calculate the difference between the highest and lowest numbers in a list with at least one integer.. Please take a minute to read the problem and respond when you're ready to work on it."
-      },
-      {
-          "role": "user",
-          "content": "do you think using the two-point approach makes sense"
-      },
-      {
-          "role": "assistant",
-          "content": "The two-pointer approach is a common technique often used in problems involving arrays, but it might not be the most straightforward method for this specific problem. Here, you want to find the largest and smallest values in the array and then calculate the difference between them.\n\nHere's a couple of hints:\n\n1. **Identify Key Operations:**\n   - Think about what operations you need to perform on the list to find both the largest and smallest values. \n\n2. **Approach:**\n   - A simple way would be to iterate over the array once to find both the maximum and minimum values.\n   - Then you can compute the difference between these two values.\n\n3. **Efficiency:**\n   - Consider the complexity of your solution. You aim to solve this problem in linear time, O(n), since you need to look at each element at least once to determine if it's the minimum or maximum.\n\nIf you think using a two-pointer approach helps you or makes the problem easier for you to understand or solve, you can certainly try it that way. However, traditional single-loop methods may be simpler for this particular task. \n\nWould you like guidance on implementing this approach?"
-      }
-  ]
-  );
-  
-  const [messagesLogs, setMessagesLogs] = useState<MessageLog[]>([]);
+  // uncomment for testing purposes to see how it looks
+  // const [chatLogs, setChatLogs] = useState<MessageLog[]>(
+  //   [
+  //     {
+  //         "role": "assistant",
+  //         "content": "Welcome, Ibrohim Abdivokhidov! I'm Wei B Tan, and I'm currently a Senior Software Engineer at Snapchat. Today, we'll be working on the Biggest Difference problem, where Calculate the difference between the highest and lowest numbers in a list with at least one integer.. Please take a minute to read the problem and respond when you're ready to work on it."
+  //     },
+  //     {
+  //         "role": "user",
+  //         "content": "do you think using the two-point approach makes sense"
+  //     },
+  //     {
+  //         "role": "assistant",
+  //         "content": "The two-pointer approach is a common technique often used in problems involving arrays, but it might not be the most straightforward method for this specific problem. Here, you want to find the largest and smallest values in the array and then calculate the difference between them.\n\nHere's a couple of hints:\n\n1. **Identify Key Operations:**\n   - Think about what operations you need to perform on the list to find both the largest and smallest values. \n\n2. **Approach:**\n   - A simple way would be to iterate over the array once to find both the maximum and minimum values.\n   - Then you can compute the difference between these two values.\n\n3. **Efficiency:**\n   - Consider the complexity of your solution. You aim to solve this problem in linear time, O(n), since you need to look at each element at least once to determine if it's the minimum or maximum.\n\nIf you think using a two-pointer approach helps you or makes the problem easier for you to understand or solve, you can certainly try it that way. However, traditional single-loop methods may be simpler for this particular task. \n\nWould you like guidance on implementing this approach?"
+  //     }
+  // ]
+  // );
 
+  const [chatLogs, setChatLogs] = useState<MessageLog[]>([]);
+  const [messagesLogs, setMessagesLogs] = useState<MessageLog[]>([]);
   const [interviewerState, setInterviewerState] = useState({
     isThinking: false,
     isSpeaking: false,
@@ -347,7 +348,7 @@ export default function Landing() {
   const dummyQuery = "What is the capital of France?";
 
   const prepareInitialPromptForSpeech = async () => {
-    const currentUser = user?.fullName || 'Dear';
+    const currentUser = user?.firstName || 'Dear';
     const currentProblem = selectedProblem?.label || 'problem';
     const currentProblemContent = selectedProblem?.value || 'problem content';
     const tempInstr = `
@@ -394,18 +395,18 @@ export default function Landing() {
   const [userInteracted, setUserInteracted] = useState(false);
 
   // turn on in production only (kiddin')
-  // useEffect(() => {
-  //   const handleUserInteraction = () => {
-  //     setUserInteracted(true);
-  //     window.removeEventListener('click', handleUserInteraction);
-  //   };
+  useEffect(() => {
+    const handleUserInteraction = () => {
+      setUserInteracted(true);
+      window.removeEventListener('click', handleUserInteraction);
+    };
   
-  //   window.addEventListener('click', handleUserInteraction);
+    window.addEventListener('click', handleUserInteraction);
   
-  //   return () => {
-  //     window.removeEventListener('click', handleUserInteraction);
-  //   };
-  // }, []);
+    return () => {
+      window.removeEventListener('click', handleUserInteraction);
+    };
+  }, []);
 
   useEffect(() => {
     if (userInteracted) {
